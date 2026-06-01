@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+
+}
+
+enum Role{
+  CREATOR
+  EVENTEE
+}
+
+enum PaymentStatus{
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum ReminderOffset{
+  ONE_HOUR_BEFORE
+  THREE_HOURS_BEFORE
+  ONE_DAY_BEFORE
+  THREE_DAYS_BEFORE
+  ONE_WEEK_BEFORE
+}
+
+model User{
+  id String @id @default(uuid())
+  firstName String
+  lastName String
+  email String @unique
+  passwordHash String 
+  role Role @default(EVENTEE)
+  emailVerifiedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  refreshTokens RefreshToken[]
+
+  events Event[]
+  tickets Ticket[]
+  payments Payment[]
+  reminders Reminder[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model Event{
+  id String @id @default(uuid())
+  creatorId String
+  title String
+  description String
+  eventDate DateTime
+  location String
+  price Decimal @db.Decimal(10,2)
+  capacity Int
+  defaultReminder ReminderOffset @default(ONE_DAY_BEFORE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator User @relation(fields:[creatorId],references:[id], onDelete: Cascade)
+  tickets Ticket[]
+  payments Payment[]
+  reminders Reminder[]
+
+  @@index([creatorId])
+  @@index([createdAt])
+  @@map("events")
+}
+
+model Ticket{
+  id String @id @default(uuid())
+  eventId String
+  userId String
+  paymentId String @unique
+  qrUuid String @unique @default(uuid())
+  qrImageUrl String
+  scanned Boolean @default(false)
+  scannedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment Payment? @relation(fields: [paymentId], references: [id])
+
+  @@index([eventId])
+  @@index([userId])
+  @@index([qrUuid])
+  @@map("tickets")
+}
+
+model Reminder{
+  id String @id @default(uuid())
+  userId String
+  eventId String
+  remindAt DateTime
+  sent Boolean @default(false)
+  customOffset ReminderOffset?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+  @@index([remindAt])
+  @@index([sent])
+  @@map("reminders")
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  userId        String
+  eventId       String
+  amount        Decimal       @db.Decimal(10, 2)
+  currency      String        @default("NGN")
+  status        PaymentStatus @default(PENDING)
+  reference     String        @unique
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticket  Ticket?
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([status])
+  @@map("payments")
+}
