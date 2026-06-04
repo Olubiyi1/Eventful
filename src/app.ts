@@ -8,6 +8,8 @@ import { globalErrorHandler } from "./errorHandlers/globalErrorHandler";
 import userRouter from "./User/user.routes";
 import RateLimiter from "./guards/rateLimiter";
 import eventRouter from "./Event/event.route";
+import paymentRouter from "./payment/payment.route";
+import ticketRouter from "./Ticket/ticket.route";
 
 const app: Application = express()
 app.set("trust proxy",1)
@@ -32,6 +34,8 @@ app.get("/health",(req:Request,res:Response)=>{
 
 app.use("/api/v1/users",userRouter)
 app.use("api/v1/events",eventRouter)
+app.use("api/v1/payments",paymentRouter)
+app.use("api/v1/tickets",ticketRouter)
 app.get("/",(req,res)=>{
   res.json({message:"welcome here"})
 })

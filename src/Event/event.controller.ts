@@ -5,7 +5,7 @@ import EventService from "./event.service";
 import ResponseHandler from "../utils/ResponseHandler";
 import AppError from "../errorHandlers/appError";
 import Labels from "../utils/labels";
-import { createEventSchema, updateEventSchema } from "./event.validation";
+import { createEventSchema, updateEventSchema,filterEventSchema } from "./event.validation";
 
 const controllerLog = Labels.createLabel("CONTROLLER");
 
@@ -142,11 +142,33 @@ export const getAllEvents = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const result = await EventService.getAllEvents();
+    const { minPrice, maxPrice, startDate, endDate, location, search, page, limit } = req.query;
 
-    controllerLog.info("All events fetched");
+    const { error, value } = filterEventSchema.validate(
+      {
+        minPrice: minPrice ? Number(minPrice) : undefined,
+        maxPrice: maxPrice ? Number(maxPrice) : undefined,
+        startDate: startDate ? new Date(startDate as string) : undefined,
+        endDate: endDate ? new Date(endDate as string) : undefined,
+        location: location as string | undefined,
+        search: search as string | undefined,
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      },
+      { abortEarly: false, stripUnknown: true }
+    );
 
-    ResponseHandler.ok(res, "Events fetched successfully", { events: result });
+    if (error) {
+      const messages = error.details.map((detail) => detail.message);
+      next(new AppError(messages.join(", "), 400));
+      return;
+    }
+
+    const result = await EventService.getAllEvents(value);
+
+    controllerLog.info("All events fetched", { filters: value });
+
+    ResponseHandler.ok(res, "Events fetched successfully", result);
   } catch (err) {
     if (err instanceof AppError && err.isOperational) {
       controllerLog.warn("Failed to fetch events", { reason: err.message });

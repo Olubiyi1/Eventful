@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import config from "./config/config";
 import Labels from "./utils/labels";
 import prisma from "./config/prisma";
-import { checkRedicConnection } from "./queues/connection";
+import redisConnection,{ checkRedisConnection } from "./config/redis";
 
 dotenv.config();
 
@@ -17,7 +17,7 @@ const startServer = async (): Promise<void> => {
     await prisma.$connect();
     dbLog.info("Database connected");
 
-    await checkRedicConnection
+    await checkRedisConnection
 
     server = app.listen(config.port || 3000, () => {
       dbLog.info("Server up and running");

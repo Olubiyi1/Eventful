@@ -4,6 +4,7 @@ import AppError from "../errorHandlers/appError";
 import Guards from "../guards/guards";
 import crypto from "crypto";
 import { Role } from "../../generated/prisma";
+import { addVerificationEmailJob } from "../queues/emailQueue";
 
 interface UserData {
   firstName: string;
@@ -68,29 +69,40 @@ class UserService {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       serviceLog.warn(`${email} already exists`, { email, statusCode: 409 });
-      throw new AppError("Email alraady Exist", 409);
+      throw new AppError("Email already exists", 409);
     }
-    // allowed roles
-    // if (role && !Object.values(Role).includes(role)) {
-    //   serviceLog.warn("Invalid role selected", { email, role });
-    //   throw new AppError("Invalid role selected", 400);
-    // }
 
-    const hashPaswword = Guards.hashPassword(password);
+    const hashPassword = Guards.hashPassword(password);
 
     const user = await prisma.user.create({
       data: {
         firstName,
         lastName,
-        passwordHash: hashPaswword,
+        passwordHash: hashPassword,
         email,
         role: role || Role.EVENTEE,
       },
     });
-    serviceLog.info(`User registered: ${email}`, {
-      email,
-      role: user.role,
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await prisma.verificationToken.create({
+      data: {
+        userId: user.id,
+        token,
+        expiresAt,
+      },
     });
+
+    await addVerificationEmailJob({
+      email: user.email,
+      firstName: user.firstName,
+      token,
+    });
+
+    serviceLog.info(`User registered: ${email}`, { email, role: user.role });
+
     return {
       user: {
         id: user.id,
@@ -100,7 +112,8 @@ class UserService {
         role: user.role,
         emailVerifiedAt: user.emailVerifiedAt,
       },
-      message: "Registration successful!",
+      message:
+        "Registration successful! Please check your email to verify your account.",
     };
   };
 
@@ -110,10 +123,10 @@ class UserService {
     if (!user) {
       throw new AppError("Invalid email or password", 401);
     }
-    // if (!user.emailVerifiedAt) {
-    //   serviceLog.warn("Please verify your email before logging in")
-    //   throw new AppError("Please verify your email before logging in", 403);
-    // }
+    if (!user.emailVerifiedAt) {
+      serviceLog.warn("Please verify your email before logging in")
+      throw new AppError("Please verify your email before logging in", 403);
+    }
     const isPasswordMatch = await Guards.comparePassword(
       password,
       user.passwordHash,
@@ -180,26 +193,25 @@ class UserService {
     };
   };
 
-  static profile = async(userId:string):Promise<ProfileResponse>=>{
-    const user = await prisma.user.findUnique({where:{id : userId}})
-    if(!user){
-      throw new AppError("user not found",404)
-
+  static profile = async (userId: string): Promise<ProfileResponse> => {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new AppError("user not found", 404);
     }
-    serviceLog.info(`Profile fetched ${user.email}`,{userId})
+    serviceLog.info(`Profile fetched ${user.email}`, { userId });
 
-    return{
-      user:{
+    return {
+      user: {
         id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      role: user.role,
-      emailVerifiedAt: user.emailVerifiedAt,
-      createdAt: user.createdAt,
-      }
-    }
-  }
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        emailVerifiedAt: user.emailVerifiedAt,
+        createdAt: user.createdAt,
+      },
+    };
+  };
 }
 
 export default UserService;
