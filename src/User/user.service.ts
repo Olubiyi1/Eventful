@@ -117,6 +117,32 @@ class UserService {
     };
   };
 
+  static verifyEmail = async (token: string): Promise<{ message: string }> => {
+  const verificationToken = await prisma.verificationToken.findUnique({
+    where: { token },
+  });
+
+  if (!verificationToken) {
+    throw new AppError("Invalid or expired verification token", 400);
+  }
+
+  if (verificationToken.expiresAt < new Date()) {
+    await prisma.verificationToken.delete({ where: { token } });
+    throw new AppError("Verification token has expired", 400);
+  }
+
+  await prisma.user.update({
+    where: { id: verificationToken.userId },
+    data: { emailVerifiedAt: new Date() },
+  });
+
+  await prisma.verificationToken.delete({ where: { token } });
+
+  serviceLog.info(`Email verified for userId: ${verificationToken.userId}`);
+
+  return { message: "Email verified successfully. You can now log in." };
+};
+
   static login = async (userData: LoginData): Promise<LoginResponse> => {
     const { email, password } = userData;
     const user = await prisma.user.findUnique({ where: { email } });

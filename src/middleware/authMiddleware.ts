@@ -44,6 +44,7 @@ export const authMiddleware = async (
       id: user.id,
       email: user.email,
       role: user.role,
+       emailVerifiedAt: user.emailVerifiedAt ?? undefined,
     };
 
     authLog.info("User authenticated", { userId: user.id });

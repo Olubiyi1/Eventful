@@ -4,7 +4,7 @@ import { VerificationEmailJob } from "../emailQueue";
 import emailTransporter from "../../helpers/emailTransporter";
 import Labels from "../../utils/labels";
 
-const workerLog = Labels.createLabel("WORKER");
+const emailWorkerLog = Labels.createLabel("EMAIL_WORKER");
 
 
 const processEmailJob = async (job: Job<VerificationEmailJob>): Promise<void> => {
@@ -24,7 +24,7 @@ const processEmailJob = async (job: Job<VerificationEmailJob>): Promise<void> =>
     `,
   });
 
-  workerLog.info("Verification email sent", { email });
+  emailWorkerLog.info("Verification email sent", { email });
 };
 
 const emailWorker = new Worker("email", processEmailJob, {
@@ -32,11 +32,11 @@ const emailWorker = new Worker("email", processEmailJob, {
 });
 
 emailWorker.on("completed", (job) => {
-  workerLog.info("Email job completed", { jobId: job.id });
+  emailWorkerLog.info("Email job completed", { jobId: job.id });
 });
 
 emailWorker.on("failed", (job, err) => {
-  workerLog.error("Email job failed", { jobId: job?.id, error: err.message });
+  emailWorkerLog.error("Email job failed", { jobId: job?.id, error: err.message });
 });
 
 export default emailWorker;

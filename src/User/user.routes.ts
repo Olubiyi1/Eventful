@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser, loginUser,getMyProfile } from "./user.controller";
+import { registerUser, loginUser,getMyProfile,verifyEmail } from "./user.controller";
 import RateLimiter from "../guards/rateLimiter";
 import { verifyLoggedInUser } from "../middleware/verifyUserMiddleware";
 import { authMiddleware } from "../middleware/authMiddleware";
@@ -11,6 +11,7 @@ const userRouter = Router();
 
 userRouter.post("/register",RateLimiter.registerLimiter,validate(registerUserValidationSchema), registerUser);
 userRouter.post("/login", RateLimiter.loginLimiter,validate(loginValidationSchema),loginUser);
+userRouter.get("/verify-email", verifyEmail);
 userRouter.get("/me",authMiddleware,verifyLoggedInUser,restrictTo([Role.CREATOR,Role.EVENTEE]),getMyProfile)
 export default userRouter;
 

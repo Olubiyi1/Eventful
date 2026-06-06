@@ -2,7 +2,10 @@ import UserService from "./user.service";
 import { Request, Response, NextFunction } from "express";
 import { AuthRequest } from "../types/express";
 import ResponseHandler from "../utils/ResponseHandler";
-import { registerUserValidationSchema, loginValidationSchema } from "./user.validaton";
+import {
+  registerUserValidationSchema,
+  loginValidationSchema,
+} from "./user.validaton";
 import AppError from "../errorHandlers/appError";
 import Labels from "../utils/labels";
 
@@ -11,7 +14,7 @@ const controllerLog = Labels.createLabel("CONTROLLER");
 export const registerUser = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const { error, value } = registerUserValidationSchema.validate(req.body, {
@@ -55,10 +58,33 @@ export const registerUser = async (
   }
 };
 
+export const verifyEmail = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { token } = req.query;
+
+    if (!token || typeof token !== "string") {
+      throw new AppError("Verification token is required", 400);
+    }
+
+    const result = await UserService.verifyEmail(token);
+
+    res.status(200).json({
+      status: "success",
+      message: result.message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const loginUser = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
     const { error, value } = loginValidationSchema.validate(req.body, {
@@ -109,11 +135,11 @@ export const loginUser = async (
 export const getMyProfile = async (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> => {
   try {
-    if(!req.user){
-        next(new AppError("Unauthorized", 401));
+    if (!req.user) {
+      next(new AppError("Unauthorized", 401));
       return;
     }
     const userId = req.user.id;

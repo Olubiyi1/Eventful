@@ -10,6 +10,8 @@ import RateLimiter from "./guards/rateLimiter";
 import eventRouter from "./Event/event.route";
 import paymentRouter from "./payment/payment.route";
 import ticketRouter from "./Ticket/ticket.route";
+import reminderRouter from "./Reminder/reminder.routes";
+import analyticsRouter from "./Analytics/analytics.routes";
 
 const app: Application = express()
 app.set("trust proxy",1)
@@ -32,10 +34,13 @@ app.get("/health",(req:Request,res:Response)=>{
     res.json({status:"alive"})
 })
 
+// routes
 app.use("/api/v1/users",userRouter)
-app.use("api/v1/events",eventRouter)
-app.use("api/v1/payments",paymentRouter)
-app.use("api/v1/tickets",ticketRouter)
+app.use("/api/v1/events",eventRouter)
+app.use("/api/v1/payments",paymentRouter)
+app.use("/api/v1/tickets",ticketRouter)
+app.use("/api/v1/reminders",reminderRouter)
+app.use("/api/v1/analytics",analyticsRouter)
 app.get("/",(req,res)=>{
   res.json({message:"welcome here"})
 })

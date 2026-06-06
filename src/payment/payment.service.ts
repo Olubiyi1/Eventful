@@ -4,6 +4,8 @@ import Labels from "../utils/labels";
 import AppError from "../errorHandlers/appError";
 import config from "../config/config";
 import { PaymentStatus } from "../../generated/prisma";
+import { addQrCodeJob } from "../queues/qrQueue";
+import ReminderService from "../Reminder/reminder.service";
 
 const paymentServiceLogs = Labels.createLabel("PAYMENT_SERVICE_LOGS");
 
@@ -97,44 +99,65 @@ class PaymentService {
     };
   };
 
-  static verifyPayment = async (reference: string): Promise<void> => {
-    const paystackResponse = await axios.get(
-      `${PAYSTACK_BASE_URL}/transaction/verify/${reference}`,
-      { headers: paystackHeaders },
-    );
 
-    const { status, metadata } = paystackResponse.data.data;
 
-    if (status !== "success") {
-      throw new AppError("Payment verification failed", 400);
-    }
+static verifyPayment = async (reference: string): Promise<void> => {
+  const paystackResponse = await axios.get(
+    `${PAYSTACK_BASE_URL}/transaction/verify/${reference}`,
+    { headers: paystackHeaders }
+  );
 
-    const payment = await prisma.payment.findUnique({ where: { reference } });
-    if (!payment) {
-      throw new AppError("Payment record not found", 404);
-    }
+  const { status, metadata } = paystackResponse.data.data;
 
-    if (payment.status === PaymentStatus.SUCCESS) {
-      paymentServiceLogs.warn("Payment already verified", { reference });
-      return;
-    }
+  if (status !== "success") {
+    throw new AppError("Payment verification failed", 400);
+  }
 
-    await prisma.payment.update({
-      where: { reference },
-      data: { status: PaymentStatus.SUCCESS, paidAt: new Date() },
-    });
+  const payment = await prisma.payment.findUnique({ where: { reference } });
+  if (!payment) {
+    throw new AppError("Payment record not found", 404);
+  }
 
-    await prisma.ticket.create({
-      data: {
-        userId: metadata.userId,
-        eventId: metadata.eventId,
-        paymentId: payment.id,
-        qrImageUrl: "",
+  if (payment.status === PaymentStatus.SUCCESS) {
+    paymentServiceLogs.warn("Payment already verified", { reference });
+    return;
+  }
+
+  await prisma.payment.update({
+    where: { reference },
+    data: { status: PaymentStatus.SUCCESS, paidAt: new Date() },
+  });
+
+  const ticket = await prisma.ticket.create({
+    data: {
+      userId: metadata.userId,
+      eventId: metadata.eventId,
+      paymentId: payment.id,
+      qrImageUrl: "",
+    },
+    include: {
+      user: {
+        select: {
+          email: true,
+          firstName: true,
+        },
       },
-    });
+    },
+  });
 
-    paymentServiceLogs.info("Payment verified and ticket created", { reference });
-  };
+  await ReminderService.createReminder(metadata.userId, metadata.eventId);
+
+  await addQrCodeJob({
+    ticketId: ticket.id,
+    userId: metadata.userId,
+    eventId: metadata.eventId,
+    email: ticket.user.email,
+    firstName: ticket.user.firstName,
+    qrUuid: ticket.qrUuid,
+  });
+
+  paymentServiceLogs.info("Payment verified, ticket created, QR job queued", { reference });
+};
 
   static handleWebhook = async (event: string, data: any): Promise<void> => {
     if (event === "charge.success") {

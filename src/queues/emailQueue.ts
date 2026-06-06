@@ -2,7 +2,7 @@ import { Queue } from "bullmq";
 import { redisConnectionOptions } from "./connection";
 import Labels from "../utils/labels";
 
-const queueLog = Labels.createLabel("QUEUE");
+const EmailQueueLog = Labels.createLabel("EMAIL_QUEUE");
 
 export interface VerificationEmailJob {
   email: string;
@@ -12,7 +12,7 @@ export interface VerificationEmailJob {
 
 export const emailQueue = new Queue("email", { connection: redisConnectionOptions });
 
-queueLog.info("Email queue initialized");
+EmailQueueLog.info("Email queue initialized");
 
 export const addVerificationEmailJob = async (
   data: VerificationEmailJob
@@ -26,5 +26,5 @@ export const addVerificationEmailJob = async (
     },
   });
 
-  queueLog.info("Verification email job added to queue", { email: data.email });
+  EmailQueueLog.info("Verification email job added to queue", { email: data.email });
 };

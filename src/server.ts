@@ -4,7 +4,10 @@ import dotenv from "dotenv";
 import config from "./config/config";
 import Labels from "./utils/labels";
 import prisma from "./config/prisma";
-import redisConnection,{ checkRedisConnection } from "./config/redis";
+import { checkRedisConnection } from "./config/redis";
+import "./queues/workers/emailWorker"
+import "./queues/workers/qrWorker"
+import "./queues/workers/reminderWorker"
 
 dotenv.config();
 
