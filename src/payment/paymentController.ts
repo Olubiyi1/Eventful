@@ -50,6 +50,8 @@ export const initializePayment = async (
       next(err);
       return;
     }
+    console.log(err)
+    
     controllerLog.error("Unexpected error initializing payment", { error: err });
     next(new AppError("Something went wrong", 500));
   }

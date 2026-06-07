@@ -1,7 +1,7 @@
 import express, { urlencoded,Request,Response,Application } from "express";
 import routeLogger from "./middleware/routeLogger";
 import helmet from "helmet";
-// import cors from "cors"
+import cors from "cors"
 import hpp from "hpp"
 import { notFoundHandler } from "./errorHandlers/notFound";
 import { globalErrorHandler } from "./errorHandlers/globalErrorHandler";
@@ -15,14 +15,22 @@ import analyticsRouter from "./Analytics/analytics.routes";
 
 const app: Application = express()
 app.set("trust proxy",1)
+// Allow all origins
+
 
 // app.use(cors)
 
 // securitymiddleware
 app.use(helmet());
+app.use(
+  cors({
+    origin: "*",
+  })
+);
 app.use(express.json({ limit: "10kb" }));
 app.use(urlencoded({ extended: true, limit: "10kb" }));
 app.use(hpp());
+
 // app.use(cookieParser())
 
 // logging route

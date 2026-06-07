@@ -63,7 +63,8 @@ class PaymentService {
       );
     }
 
-    const amount = Number(event.price) * 100;
+    const amount = Math.round(Number(event.price) * 100);
+    console.log("Amount being sent to Paystack:", amount, typeof amount);
 
     const paystackResponse = await axios.post(
       `${PAYSTACK_BASE_URL}/transaction/initialize`,
