@@ -7,7 +7,9 @@
   "scripts": {
     "test": "jest",
     "dev": "nodemon",
-    "migrate": "npx prisma generate && npx prisma db push"
+    "migrate": "npx prisma generate && npx prisma db push",
+    "build": "tsc",
+    "start": "node dist/server.js"
   },
   "jest": {
     "preset": "ts-jest",
