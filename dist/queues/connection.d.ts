@@ -1,5 +1,2 @@
-export declare const redisConnectionOptions: {
-    host: string;
-    port: number;
-    maxRetriesPerRequest: null;
-};
+import { ConnectionOptions } from "bullmq";
+export declare const redisConnectionOptions: ConnectionOptions;
